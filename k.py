@@ -1,0 +1,141 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# Определение системы уравнений
+def system(t, z):
+    x, y = z
+    dxdt = np.arctan(x + y)
+    dydt = x ** 2 - y ** 2 / 4 - 1 / (4 * y ** 2) - 0.5 if y != 0 else np.inf
+    return np.array([dxdt, dydt])
+
+
+# Метод Эйлера
+def euler_method(f, t0, z0, h, n):
+    t = np.zeros(n + 1)
+    z = np.zeros((n + 1, 2))
+    t[0] = t0
+    z[0] = z0
+
+    for i in range(n):
+        z[i + 1] = z[i] + h * f(t[i], z[i])
+        t[i + 1] = t[i] + h
+
+    return t, z
+
+
+# Параметры
+h = 0.01
+t0 = 0
+n = 2000
+
+# Начальные условия ВОКРУГ особых точек
+init_cond_zoom = [
+    # Вокруг седла (1, -1)
+    (0.8, -1.2), (0.9, -1.1), (1.0, -1.0), (1.1, -0.9), (1.2, -0.8),
+    (0.8, -0.8), (0.9, -0.9), (1.1, -1.1), (1.2, -1.2),
+
+    # Вокруг неустойчивого фокуса (-1, 1)
+    (-1.2, 0.8), (-1.1, 0.9), (-1.0, 1.0), (-0.9, 1.1), (-0.8, 1.2),
+    (-1.2, 1.2), (-1.1, 1.1), (-0.9, 0.9), (-0.8, 0.8)
+]
+
+
+# Функция для построения изоклин
+def plot_nullclines(ax, x_range, y_pos, y_neg):
+    # Нулевая изоклина для dx/dt = 0
+    ax.plot(x_range, -x_range, 'k--', linewidth=1.5, label=r'$\dot{x}=0$')
+
+    # Нулевая изоклина для dy/dt = 0
+    x_pos = 0.5 * (y_pos + 1 / y_pos)
+    ax.plot(x_pos, y_pos, 'g--', linewidth=1.5, label=r'$\dot{y}=0$')
+    ax.plot(-x_pos, y_pos, 'g--', linewidth=1.5)
+    ax.plot(x_pos, -y_pos, 'g--', linewidth=1.5)
+    ax.plot(-x_pos, -y_pos, 'g--', linewidth=1.5)
+
+
+# РИСУНОК 1: УВЕЛИЧЕННЫЙ ВИД вокруг особых точек
+fig1, ax1 = plt.subplots(figsize=(10, 8))
+for x0, y0 in init_cond_zoom:
+    try:
+        t, z = euler_method(system, t0, [x0, y0], h, n * 2)
+        if y0 > 0:
+            ax1.plot(z[:, 0], z[:, 1], 'b-', alpha=0.7, linewidth=1.2)
+        else:
+            ax1.plot(z[:, 0], z[:, 1], 'r-', alpha=0.7, linewidth=1.2)
+        ax1.plot(x0, y0, 'o', markersize=3, color='gray')
+    except:
+        continue
+
+# Построение изоклин в увеличенной области
+x_range_zoom = np.linspace(-2, 2, 20)
+y_pos_zoom = np.linspace(0.5, 1.5, 100)
+y_neg_zoom = np.linspace(-1.5, -0.5, 100)
+
+ax1.plot(x_range_zoom, -x_range_zoom, 'k--', linewidth=1.5, label=r'$\dot{x}=0 \ (y=-x)$')
+x_pos = 0.5 * (y_pos_zoom + 1 / y_pos_zoom)
+ax1.plot(x_pos, y_pos_zoom, 'g--', linewidth=1.5, label=r'$\dot{y}=0$')
+ax1.plot(-x_pos, y_pos_zoom, 'g--', linewidth=1.5)
+ax1.plot(x_pos, -y_pos_zoom, 'g--', linewidth=1.5)
+ax1.plot(-x_pos, -y_pos_zoom, 'g--', linewidth=1.5)
+
+# Особые точки крупнее
+ax1.plot(1, -1, 'k*', markersize=20, label='Седло (1,-1)', zorder=10)
+ax1.plot(-1, 1, 'k^', markersize=20, label='Неуст. фокус (-1,1)', zorder=10)
+
+# Подписи
+ax1.text(1, -1.1, 'Седло', fontsize=10, ha='center', color='darkred')
+ax1.text(-1, 1.1, 'Неуст. фокус', fontsize=10, ha='center', color='darkblue')
+
+# Сингулярность
+ax1.axhline(y=0, color='gray', linestyle=':', linewidth=2, label='y=0 (сингулярность)')
+
+# Настройки увеличенного вида
+ax1.set_xlabel('x', fontsize=12)
+ax1.set_ylabel('y', fontsize=12)
+ax1.set_title('Увеличенный фазовый портрет вокруг особых точек (метод Эйлера)', fontsize=14)
+ax1.grid(True, alpha=0.3)
+ax1.legend(loc='best')
+ax1.set_xlim(-2, 2)
+ax1.set_ylim(-2, 2)
+ax1.set_aspect('equal')
+ax1.axhline(y=0, color='k', linewidth=0.5)
+ax1.axvline(x=0, color='k', linewidth=0.5)
+
+# РИСУНОК 2: Векторное поле для ясности
+fig2, ax2 = plt.subplots(figsize=(10, 8))
+
+X, Y = np.meshgrid(np.linspace(-2.5, 2.5, 25), np.linspace(-2.5, 2.5, 25))
+U = np.arctan(X + Y)
+V = X ** 2 - Y ** 2 / 4 - 1 / (4 * Y ** 2) - 0.5
+V[np.abs(Y) < 0.2] = np.nan
+
+ax2.quiver(X, Y, U, V, color='gray', alpha=0.7, scale=25)
+
+# Изоклины для векторного поля
+x_range = np.linspace(-2.5, 2.5, 20)
+y_pos = np.linspace(0.3, 2.5, 100)
+y_neg = np.linspace(-2.5, -0.3, 100)
+plot_nullclines(ax2, x_range, y_pos, y_neg)
+
+# Особые точки
+ax2.plot(1, -1, 'k*', markersize=15, label='Седло (1,-1)')
+ax2.plot(-1, 1, 'k^', markersize=15, label='Неуст. фокус (-1,1)')
+
+ax2.axhline(y=0, color='gray', linestyle=':', linewidth=2, label='y=0 (сингулярность)')
+ax2.set_xlabel('x')
+ax2.set_ylabel('y')
+ax2.set_title('Векторное поле системы (направления движения)')
+ax2.legend(loc='best')
+ax2.set_xlim(-2.5, 2.5)
+ax2.set_ylim(-2.5, 2.5)
+ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+
+print("Построены 2 рисунка:")
+print("1. Увеличенный фазовый портрет вокруг особых точек (детализация)")
+print("2. Векторное поле для понимания направлений движения")
+
+
